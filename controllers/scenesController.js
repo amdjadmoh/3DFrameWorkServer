@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Tour = require('../models/tourModel');
 const Scene = require('../models/sceneModel');
+const fs = require('fs');
 
 exports.getAlltours = async (req, res) => {
   try {
@@ -176,6 +177,22 @@ exports.updateScene = async (req, res) => {
 };
 exports.deleteScene = async (req, res) => {
   try {
+    const scene = await Scene.findById(req.params.id);
+    if (!scene) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'No scene found with that ID',
+      });
+    }
+    //Delete image file
+    fs.unlink(scene.imageLink, (err) => {
+      if (err) {
+        return res.status(500).json({
+          status: 'fail',
+          message: 'Error deleting image file',
+        });
+      }
+    });
     await Scene.findByIdAndDelete(req.params.id);
     res.status(200).json({
       status: 'success',
