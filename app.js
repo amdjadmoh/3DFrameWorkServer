@@ -2,10 +2,10 @@ const express = require('express');
 
 const morgan = require('morgan');
 const cors = require('cors');
-const eventsRouter = require('./routes/eventsRoutes');
-
-const scenesRouter = require('./routes/scenesRoutes');
-
+const AppError = require('./utils/appError');
+const toursRouter = require('./routes/toursRoutes');
+const adminRouter = require('./routes/adminRoutes');
+const globalErrorHandler = require('./controllers/errorController');
 
 const app = express();
 
@@ -26,13 +26,17 @@ app.use((req, res, next) => {
 });
 
 // 3) Routes
-app.use('/api/v1/events', eventsRouter);
-app.use('/api/v1/scenes', scenesRouter);
+app.use('/', adminRouter);
+app.use('/api/v1/tours', toursRouter);
 
-app.set('view engine', 'ejs');
-app.set('views', 'views');
-app.get('/', (req, res) => {
-  res.render('index');
+app.all('*', (req, res, next) => {
+  next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
 });
+app.use(globalErrorHandler);
+// app.set('view engine', 'ejs');
+// app.set('views', 'views');
+// app.get('/', (req, res) => {
+//   res.render('index');
+// });
 
 module.exports = app;
