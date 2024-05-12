@@ -64,6 +64,15 @@ const tourSchema = new mongoose.Schema({
     type: String,
   },
   scenesList: [sceneSchema],
+  isPublic: {
+    type: Boolean,
+    default: false,
+  },
+  tourCreator: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  },
 });
+
 const Tour = mongoose.model('Tour', tourSchema);
 module.exports = Tour;
