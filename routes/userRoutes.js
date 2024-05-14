@@ -5,14 +5,16 @@ const userController = require('../controllers/userController');
 const router = express.Router();
 router.post('/signup', authController.signup);
 router.post('/login', authController.login);
-router.post('/forgotPassowrd', authController.forgotPassword);
-router.patch('/resetPassword/:token', authController.resetPassword);
+router.post('/forgotPassword', authController.forgotPassword);
+router.patch('/resetPassword/:resetToken', authController.resetPassword);
 router.patch(
   '/updateMyPassword',
   authController.protect,
   authController.updatePassword,
 );
 router.delete('/deleteMe', authController.protect, authController.deleteMe);
+router.get('/amIlogged', authController.protect, authController.amIlogged);
+router.post('/logout', authController.logout); // blacklist a token
 // router.get('/logout', authController.logout);
 // router.post('/forgotPassword', authController.forgotPassword);
 // router.patch('/resetPassword/:token', authController.resetPassword);

@@ -7,6 +7,7 @@ const AppError = require('../utils/appError');
 const catchAsync = require('../utils/catchAsync');
 const User = require('../models/userModel');
 const sendEmail = require('../utils/email');
+const BlacklistedToken = require('../models/blackListedToken');
 
 const signToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -62,6 +63,26 @@ exports.login = catchAsync(async (req, res, next) => {
   }
   createSendToken(user, 200, res);
 });
+exports.logout = catchAsync(async (req, res, next) => {
+  let token;
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith('Bearer')
+  ) {
+    token = req.headers.authorization.split(' ')[1];
+  } else if (req.cookies.jwt) {
+    token = req.cookies.jwt;
+  }
+  if (!token) {
+    return next(new AppError('You are already logged out.', 401));
+  }
+  // blackList token
+  await BlacklistedToken.create({ token });
+  res.status(200).json({
+    status: 'success',
+    message: 'You are logged out',
+  });
+});
 exports.protect = catchAsync(async (req, res, next) => {
   let token;
   if (
@@ -77,23 +98,20 @@ exports.protect = catchAsync(async (req, res, next) => {
       new AppError('You are not logged in! Please log in to get access.', 401),
     );
   }
+  const blacklistedToken = await BlacklistedToken.findOne({ token });
+  if (blacklistedToken) {
+    return next(new AppError('You are logged out. Please log in again', 401));
+  }
   //verify token
   const decoded = await promisify(jwt.verify)(token, secretKey);
   //check if user still exists
   const freshUser = await User.findById(decoded.id);
   if (!freshUser) {
-    return next(
-      new AppError(
-        'The user belonging to this token does no longer exist.',
-        401,
-      ),
-    );
+    return next(new AppError('You are logged out. Please log in again', 401));
   }
   //check if user changed password after the token was issued
   if (freshUser.passwordChangedAfter(decoded.iat)) {
-    return next(
-      new AppError('User recently changed password! Please log in again.', 401),
-    );
+    return next(new AppError('You are logged out. Please log in again', 401));
   }
   //Grant ACCESS TO PROTECTED ROUTE
   req.user = freshUser;
@@ -130,8 +148,8 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
   const resetToken = user.createPasswordResetToken();
   await user.save({ validateBeforeSave: false });
   //3 send the mail to user
-  const resetURL = `${req.protocol}://${req.get('host')}/api/c1/users/resetPassowrd/${resetToken}`;
-  const message = ` Forgot your password? submit a patch request with new password and password confirm to ${resetURL}.\n if you didnt make this request just ignore this message`;
+  const resetURL = `${req.protocol}://${req.get('host')}/resetPassword/${resetToken}`;
+  const message = ` Forgot your password? click on the link to set a new password  ${resetURL}.\n if you didnt make this request just ignore this message`;
   try {
     await sendEmail({
       email: user.email,
@@ -153,7 +171,7 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
   //1) Get user based on the token
   const hashedToken = crypto
     .createHash('sha256')
-    .update(req.params.token)
+    .update(req.params.resetToken)
     .digest('hex');
   const user = await User.findOne({
     passwordResetToken: hashedToken,
@@ -207,5 +225,10 @@ exports.deleteMe = catchAsync(async (req, res, next) => {
   res.status(204).json({
     status: 'success',
     data: null,
+  });
+});
+exports.amIlogged = catchAsync(async (req, res, next) => {
+  res.status(200).json({
+    status: 'success',
   });
 });
