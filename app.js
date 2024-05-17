@@ -2,6 +2,7 @@ const express = require('express');
 
 const morgan = require('morgan');
 const cors = require('cors');
+const path = require('path');
 const AppError = require('./utils/appError');
 const toursRouter = require('./routes/toursRoutes');
 const userRouter = require('./routes/userRoutes');
@@ -12,12 +13,19 @@ const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss-clean');
 const hpp = require('hpp');
 const cookieParser = require('cookie-parser');
+const authController = require('./controllers/authController');
 
 const app = express();
 
 //1)Middlewares
 //Set Security HTTP headers
-app.use(helmet());
+
+// app.use(
+//   helmet({
+//     crossOriginEmbedderPolicy: false,
+//     // ...
+//   }),
+// );
 //Development logging
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
@@ -53,7 +61,8 @@ app.use(xss());
 //Prevent parameter pollution
 app.use(hpp({}));
 //serving static files
-app.use(express.static('public'));
+app.use(express.static('public/dist'));
+app.use(express.static('public/build'));
 
 app.use(express.urlencoded({ extended: true }));
 // request time
@@ -63,11 +72,26 @@ app.use((req, res, next) => {
 });
 
 // 3) Routes
+const sendFile = (req, res) => {
+  console.log('here');
+  const filename = req.params.filename;
+  const tourID = req.params.tourID;
+  res.sendFile(path.resolve(__dirname, 'images/tours', tourID, filename));
+};
 app.use('/api/v1/users', userRouter);
 app.use('/api/v1/tours', toursRouter);
-
-app.all('*', (req, res, next) => {
-  next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
+app.get('/appiframe', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'build', 'index.html'));
+});
+app.get(
+  '/images/tours/:tourID/:filename',
+  authController.protect,
+  authController.restrictTo('admin', 'user'),
+  authController.restrictTourToCreator,
+  sendFile,
+);
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'dist', 'index.html'));
 });
 app.use(globalErrorHandler);
 // app.set('view engine', 'ejs');

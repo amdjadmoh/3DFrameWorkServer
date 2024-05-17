@@ -45,6 +45,30 @@ router
     uploadSceneImage.single('image'),
     toursController.addScene,
   );
+router
+  .route('/:tourID/scenes/:sceneID')
+  .delete(
+    authController.protect,
+    authController.restrictTo('admin', 'user'),
+    authController.restrictTourToCreator,
+    toursController.deleteScene,
+  )
+  .patch(
+    authController.protect,
+    authController.restrictTo('admin', 'user'),
+    authController.restrictTourToCreator,
+    toursController.updateScene,
+  )
+  .get(toursController.getSceneImage);
+
+// router
+//   .route('/:tourID/scenes/:sceneID/image')
+//   .get(
+//     authController.protect,
+//     authController.restrictTo('admin', 'user'),
+//     authController.restrictTourToCreator,
+//     toursController.getSceneImage,
+//   );
 // router
 //   .route('/:tourID/:sceneID')
 //   .post(

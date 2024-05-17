@@ -1,0 +1,8 @@
+{
+    "appService.zipIgnorePattern": [
+        "node_modules{,/**}",
+        ".vscode{,/**}"
+    ],
+    "appService.defaultWebAppToDeploy": "/subscriptions/90fb5b8a-b9bb-4ab6-9602-177d3c5eddb9/resourceGroups/panoriha_group/providers/Microsoft.Web/sites/panoriha",
+    "appService.deploySubpath": "."
+}

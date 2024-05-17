@@ -1,5 +1,7 @@
 const mongoose = require('mongoose');
 const fs = require('fs');
+const path = require('path');
+
 const Tour = require('../models/tourModel');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
@@ -43,7 +45,21 @@ exports.getTour = catchAsync(async (req, res, next) => {
     },
   });
 });
+exports.getSceneImage = catchAsync(async (req, res, next) => {
+  try {
+    console.log('done');
 
+    const tour = await Tour.findById(req.params.tourID);
+    const scene = tour.scenesList.id(req.params.sceneID);
+    if (!scene) {
+      return next(new AppError('No scene found with that ID', 404));
+    }
+    const filename = scene.imageLink;
+    res.sendFile(path.resolve(__dirname, '..', filename));
+  } catch (err) {
+    console.log(err);
+  }
+});
 exports.createTour = catchAsync(async (req, res, next) => {
   const { user } = req;
   const tourData = {
@@ -53,7 +69,7 @@ exports.createTour = catchAsync(async (req, res, next) => {
   };
 
   if (req.file) {
-    tourData.tourImage = req.file.path.substring(7);
+    tourData.tourImage = req.file.path;
   }
 
   const newTour = await Tour.create(tourData);
@@ -104,10 +120,10 @@ exports.deleteTour = catchAsync(async (req, res, next) => {
   await user.save({ validateBeforeSave: false });
   //Delete image file
   if (tour.tourImage) {
-    fs.unlink(`public/${tour.tourImage}`);
+    fs.unlink(`public/dist/${tour.tourImage}`);
   }
   tour.scenesList.forEach((scene) => {
-    fs.unlink(`public/${scene.imageLink}`);
+    fs.unlink(`public/dist/${scene.imageLink}`);
   });
   await Tour.findByIdAndDelete(req.params.tourID);
   res.status(200).json({
@@ -123,11 +139,12 @@ exports.addScene = catchAsync(async (req, res, next) => {
     return next(new AppError('No tour found with that ID', 404));
   }
   const requestData = req.body;
+
   const scene = {
     _id: new mongoose.Types.ObjectId(),
     name: requestData.name,
     description: requestData.description,
-    imageLink: req.file.path.substring(7),
+    imageLink: req.file.path,
   };
   tour.scenesList.push(scene);
   await tour.save();
@@ -141,21 +158,20 @@ exports.addScene = catchAsync(async (req, res, next) => {
 });
 exports.deleteScene = catchAsync(async (req, res, next) => {
   const tour = await Tour.findById(req.params.tourID);
-  if (!tour) {
-    return next(new AppError('No tour found with that ID', 404));
-  }
-  const scene = tour.scenesList.id(req.params.sceneID);
+  const sceneID = req.params.sceneID;
+  const scene = tour.scenesList.id(sceneID);
   if (!scene) {
     return next(new AppError('No scene found with that ID', 404));
   }
   // Delete image file
-  fs.unlink(`public/${scene.imageLink}`, (err) => {
+  tour.scenesList.pull(scene);
+  await tour.save();
+  fs.unlink(`public/dist/${scene.imageLink}`, (err) => {
     if (err) {
+      console.log(err);
       return next(new AppError('Error deleting image file', 500));
     }
   });
-  await scene.remove();
-  await tour.save();
   res.status(200).json({
     status: 'success',
     data: {
@@ -163,7 +179,25 @@ exports.deleteScene = catchAsync(async (req, res, next) => {
     },
   });
 });
+exports.updateScene = catchAsync(async (req, res, next) => {
+  const tour = await Tour.findById(req.params.tourID);
+  const scene = tour.scenesList.id(req.params.sceneID);
+  if (!scene) {
+    return next(new AppError('No scene found with that ID', 404));
+  }
 
+  // Update scene with new data
+  Object.assign(scene, req.body);
+
+  await tour.save();
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      tour: tour,
+    },
+  });
+});
 // exports.addPointer = catchAsync(async (req, res, next) => {
 //   const tour = await Tour.findById(req.params.tourID);
 //   if (!tour) {
@@ -264,34 +298,6 @@ exports.deleteScene = catchAsync(async (req, res, next) => {
 //   }
 // };
 
-// exports.updateScene = async (req, res) => {
-//   try {
-//     const scene = await Scene.findByIdAndUpdate(
-//       req.params.id,
-//       {
-//         name: req.body.name,
-//         imageLink: req.body.imageLink,
-//         scenePointer: req.body.scenePointer,
-//       },
-//       {
-//         new: true,
-//         runValidators: true,
-//       },
-//     );
-//     res.status(200).json({
-//       status: 'success',
-//       requestedAt: req.requestTime,
-//       data: {
-//         scene: scene,
-//       },
-//     });
-//   } catch (err) {
-//     res.status(404).json({
-//       status: 'fail',
-//       message: err,
-//     });
-//   }
-// };
 // exports.deleteScene = async (req, res) => {
 //   try {
 //     const scene = await Scene.findById(req.params.id);
