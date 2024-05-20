@@ -120,10 +120,19 @@ exports.deleteTour = catchAsync(async (req, res, next) => {
   await user.save({ validateBeforeSave: false });
   //Delete image file
   if (tour.tourImage) {
-    fs.unlink(`public/dist/${tour.tourImage}`);
+    console.log(tour.tourImage);
+    fs.unlink(`${tour.tourImage}`, (err) => {
+      if (err) {
+        console.error(err);
+      }
+    });
   }
   tour.scenesList.forEach((scene) => {
-    fs.unlink(`public/dist/${scene.imageLink}`);
+    fs.unlink(`${scene.imageLink}`, (err) => {
+      if (err) {
+        console.error(err);
+      }
+    });
   });
   await Tour.findByIdAndDelete(req.params.tourID);
   res.status(200).json({
@@ -166,7 +175,7 @@ exports.deleteScene = catchAsync(async (req, res, next) => {
   // Delete image file
   tour.scenesList.pull(scene);
   await tour.save();
-  fs.unlink(`public/dist/${scene.imageLink}`, (err) => {
+  fs.unlink(`${scene.imageLink}`, (err) => {
     if (err) {
       console.log(err);
       return next(new AppError('Error deleting image file', 500));
@@ -198,48 +207,155 @@ exports.updateScene = catchAsync(async (req, res, next) => {
     },
   });
 });
-// exports.addPointer = catchAsync(async (req, res, next) => {
-//   const tour = await Tour.findById(req.params.tourID);
-//   if (!tour) {
-//     return next(new AppError('No tour found with that ID', 404));
-//   }
-//   const scene = tour.scenesList.id(req.params.sceneID);
-//   if (!scene) {
-//     return next(new AppError('No tour found with that ID', 404));
-//   }
-//   // Add the new pointer to the scene's scenePointer array
-//   scene.scenePointer.push(req.body);
-//   // Save the updated tour
-//   await tour.save();
-//   res.status(200).json({
-//     status: 'success',
-//     data: {
-//       tour: tour,
-//     },
-//   });
-// });
+exports.addPointer = catchAsync(async (req, res, next) => {
+  const tour = await Tour.findById(req.params.tourID);
+  if (!tour) {
+    return next(new AppError('No tour found with that ID', 404));
+  }
+  const scene = tour.scenesList.id(req.params.sceneID);
+  if (!scene) {
+    return next(new AppError('No scene found with that ID', 404));
+  }
+  // Add the new pointer to the scene's coords array
+  const newPointer = scene.coords.create(req.body); // Create the new pointer
+  scene.coords.push(newPointer); // Push the new pointer into the coords array
+  // Save the updated tour
+  await tour.save();
+  res.status(200).json({
+    status: 'success',
+    data: {
+      pointer: newPointer, // Return the ID of the new pointer
+    },
+  });
+});
+exports.deletePointer = catchAsync(async (req, res, next) => {
+  const tour = await Tour.findById(req.params.tourID);
+  if (!tour) {
+    return next(new AppError('No tour found with that ID', 404));
+  }
+  const scene = tour.scenesList.id(req.params.sceneID);
+  if (!scene) {
+    return next(new AppError('No scene found with that ID', 404));
+  }
+  const pointer = scene.coords.id(req.params.pointerID);
+  if (!pointer) {
+    return next(new AppError('No pointer found with that ID', 404));
+  }
+  scene.coords.pull(pointer);
+  await tour.save();
+  res.status(200).json({
+    status: 'success',
+    data: {
+      tour: tour,
+    },
+  });
+});
+exports.updatePointer = catchAsync(async (req, res, next) => {
+  const tour = await Tour.findById(req.params.tourID);
+  const scene = tour.scenesList.id(req.params.sceneID);
+  if (!scene) {
+    return next(new AppError('No scene found with that ID', 404));
+  }
+  const pointer = scene.coords.id(req.params.pointerID);
+  if (!pointer) {
+    return next(new AppError('No pointer found with that ID', 404));
+  }
+  // Update scene with new data
+  Object.assign(pointer, req.body);
 
-// exports.addInfo = catchAsync(async (req, res, next) => {
-//   const tour = await Tour.findById(req.params.tourID);
-//   if (!tour) {
-//     return next(new AppError('No tour found with that ID', 404));
-//   }
-//   const scene = tour.scenesList.id(req.params.sceneID);
-//   if (!scene) {
-//     return next(new AppError('No tour found with that ID', 404));
-//   }
-//   // Add the new info to the scene's info array
-//   scene.infoList.push(req.body);
-//   // Save the updated tour
-//   await tour.save();
-//   res.status(200).json({
-//     status: 'success',
-//     data: {
-//       tour: tour,
-//     },
-//   });
-// });
+  await tour.save();
 
+  res.status(200).json({
+    status: 'success',
+    data: {
+      pointer: pointer,
+    },
+  });
+});
+exports.updateText = catchAsync(async (req, res, next) => {
+  const tour = await Tour.findById(req.params.tourID);
+  const scene = tour.scenesList.id(req.params.sceneID);
+  if (!scene) {
+    return next(new AppError('No scene found with that ID', 404));
+  }
+  const text = scene.infos.id(req.params.textID);
+  if (!text) {
+    return next(new AppError('No text found with that ID', 404));
+  }
+  // Update scene with new data
+  Object.assign(text, req.body);
+
+  await tour.save();
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      text: text,
+    },
+  });
+});
+exports.deleteText = catchAsync(async (req, res, next) => {
+  const tour = await Tour.findById(req.params.tourID);
+  const scene = tour.scenesList.id(req.params.sceneID);
+  if (!scene) {
+    return next(new AppError('No scene found with that ID', 404));
+  }
+  const text = scene.infos.id(req.params.textID);
+  if (!text) {
+    return next(new AppError('No text found with that ID', 404));
+  }
+  scene.infos.pull(text);
+  await tour.save();
+  res.status(200).json({
+    status: 'success',
+    data: {
+      tour: tour,
+    },
+  });
+});
+
+exports.addText = catchAsync(async (req, res, next) => {
+  const tour = await Tour.findById(req.params.tourID);
+  if (!tour) {
+    return next(new AppError('No tour found with that ID', 404));
+  }
+  const scene = tour.scenesList.id(req.params.sceneID);
+  if (!scene) {
+    return next(new AppError('No tour found with that ID', 404));
+  }
+  // Add the new text to the scene's infos array
+  const newText = scene.infos.create(req.body); // Create the new text]
+  console.log(newText);
+  scene.infos.push(newText);
+  // Save the updated tour
+  await tour.save();
+  res.status(200).json({
+    status: 'success',
+    data: {
+      text: newText, // Return the ID of the new pointer
+    },
+  });
+});
+exports.addOther = catchAsync(async (req, res, next) => {
+  const tour = await Tour.findById(req.params.tourID);
+  if (!tour) {
+    return next(new AppError('No tour found with that ID', 404));
+  }
+  const scene = tour.scenesList.id(req.params.sceneID);
+  if (!scene) {
+    return next(new AppError('No tour found with that ID', 404));
+  }
+  // Add the new info to the scene's info array
+  scene.infos.push(req.body);
+  // Save the updated tour
+  await tour.save();
+  res.status(200).json({
+    status: 'success',
+    data: {
+      tour: tour,
+    },
+  });
+});
 // exports.getAllscenes = async (req, res) => {
 //   try {
 //     const Scenes = await Scene.find();

@@ -2,30 +2,34 @@ const mongoose = require('mongoose');
 
 const InfoSchema = new mongoose.Schema({
   url: { type: String },
-  px: {
+  x: {
     type: Number,
   },
-  py: {
+  y: {
     type: Number,
   },
-  pz: {
+  z: {
     type: Number,
   },
-  prx: {
+  rx: {
     type: Number,
     default: 0,
   },
-  pry: {
+  ry: {
     type: Number,
     default: 0,
   },
-  prz: {
+  rz: {
     type: Number,
     default: 0,
+  },
+  s: {
+    type: Number,
+    default: 5,
   },
 });
 const TextBoxSchema = new mongoose.Schema({
-  value: { type: String },
+  value: { type: String, default: 'Some text' },
   height: { type: String, default: '45' },
   width: {
     type: String,
@@ -54,10 +58,7 @@ const TextBoxSchema = new mongoose.Schema({
   },
 });
 const pointerSchema = new mongoose.Schema({
-  name: {
-    type: String,
-  },
-  nextScene: {
+  idtogo: {
     type: mongoose.Schema.Types.ObjectId,
   },
   x: {
@@ -91,7 +92,7 @@ const pointerSchema = new mongoose.Schema({
 });
 
 const sceneSchema = new mongoose.Schema({
-  name: {
+  title: {
     type: String,
   },
   description: {
@@ -101,9 +102,9 @@ const sceneSchema = new mongoose.Schema({
     type: String,
     required: [true, 'A scene must have an image'],
   },
-  scenePointer: [pointerSchema],
-  TextBoxList: [TextBoxSchema],
-  information: [InfoSchema],
+  coords: [pointerSchema],
+  infos: [TextBoxSchema],
+  other: [InfoSchema],
 });
 const tourSchema = new mongoose.Schema({
   name: {

@@ -16,13 +16,14 @@ const signToken = (id) =>
 const createSendToken = (user, statusCode, res) => {
   const token = signToken(user._id);
   const cookieOptions = {
+    secure: true,
     expires: new Date(
       Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000,
     ),
     httpOnly: true,
-    sameSite: 'Lax',
+    sameSite: 'None',
+    domain: '.panoriha.azurewebsites.net',
   };
-  if (process.env.NODE_ENV === 'production') cookieOptions.secure = true;
   res.cookie('jwt', token, cookieOptions);
   // remove password from output
   user.password = undefined;
@@ -85,6 +86,7 @@ exports.logout = catchAsync(async (req, res, next) => {
 });
 exports.protect = catchAsync(async (req, res, next) => {
   let token;
+  console.log(req.headers.authorization);
   if (
     req.headers.authorization &&
     req.headers.authorization.startsWith('Bearer')
@@ -129,7 +131,6 @@ exports.restrictTourToCreator = (req, res, next) => {
   next();
 };
 exports.restrictTo = (...roles) => {
-  
   return (req, res, next) => {
     if (!roles.includes(req.user.role)) {
       return next(
